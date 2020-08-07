@@ -15,7 +15,7 @@ ULONG myplus(ULONG start_index,ULONG loopTimes,ULONG leap)
 
    for(ULONG i=start_index;i<loopTimes;i=i+leap)
    {
-       cout<<"i----"<<i;
+       cout<<"i----"<<i<<endl;
        if(i%2==0)
        {
            numCount = numCount++;
@@ -40,18 +40,19 @@ int main(int argc,char* argv[])
 
         // Get the number the user wants
         ULONG N = atoi(argv[1]);
-
+        cout<<"N："<<N<<endl;
         // Master sends 'N' to slave
         MPI::COMM_WORLD.Send(&N, 1, MPI::LONG, 1,0);
+       ULONG mcount = myplus(myid,N/numproc,numproc);
 
-
-       finalResult = finalResult + myplus(0,N/numproc,numproc);
-
+        cout<<"主线程result："<<mcount<<endl;
+        finalResult = finalResult + mcount;
         ULONG slaveCount=0;
 
         MPI::COMM_WORLD.Recv(&slaveCount, 1, MPI::LONG, 1,0);
         finalResult = finalResult + slaveCount;
-
+        cout<<"奴隶线程结果 slavecount："<<slaveCount<<endl;
+        cout<<"奴隶线程结果 finalresult："<<finalResult<<endl;
         std::cout << " 偶数一共有： " << finalResult << std::endl;
     }
 

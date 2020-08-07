@@ -8,7 +8,22 @@ const ULONG c = 1013904223;
 
 const ULONG m = 4294967296;
 const ULONG sidelen = 65536; // sqrt of m
-ULONG fallInCircleTimes=0;
+
+ULONG myplus(ULONG start_index,ULONG loopTimes,ULONG leap)
+{
+    ULONG numCount=0;
+
+    for(ULONG i=start_index;i<loopTimes;i=i+leap)
+    {
+        cout<<"i----"<<i<<endl;
+        if(i<5)
+        {
+            numCount = numCount++;
+        }
+
+    }
+    return numCount;
+}
 
 double getNewDistance(double x, double y)
 {
@@ -27,8 +42,9 @@ double rescale(ULONG N, ULONG n, double x1, double x2)
     return x1 + f*(x2 - x1);
 }
 
-void checkPointInCircle(ULONG startIndex,ULONG loopTimes,int leapConst) {
+ULONG checkPointInCircle(ULONG startIndex,ULONG loopTimes,int leapConst) {
     ULONG i_prev = 12345; // Seed value
+    ULONG fallInCircleTimes=0;
     for (ULONG n = startIndex; n < loopTimes; n = n + leapConst) {
        // cout<<"startIndex:--"<<startIndex<<endl;
        // cout<<"n:--"<<n<<endl;
@@ -41,16 +57,23 @@ void checkPointInCircle(ULONG startIndex,ULONG loopTimes,int leapConst) {
         double x = rescale(sidelen, ix, -1, 1);
         double y = rescale(sidelen, iy, -1, 1);
 
+
         if (getNewDistance(x, y) <= 1) {
-            fallInCircleTimes++;
+            fallInCircleTimes = fallInCircleTimes++;
         }
     }
+
+    return fallInCircleTimes;
 }
 
 int main(int argc,char* argv[])
 {
     //checkPointInCircle(0,10,2);
-    checkPointInCircle(0,100000,1);
-    cout<<"击中总次数："<<fallInCircleTimes;
-    return 0;
+
+   // cout<<"击中总次数："<<checkPointInCircle(0,1000,1);
+
+    ULONG test = myplus(0,10,1);
+    cout<<test<<endl;
+
+   return 0;
 }

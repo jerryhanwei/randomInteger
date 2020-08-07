@@ -51,6 +51,20 @@ void checkPointInCircle(ULONG startIndex,ULONG loopTimes,int leapConst) {
     }
 }
 
+long test1(int start,int N,int leap)
+{
+    cout<<"start:"<<start<<"-----";
+    // Partial result for node 0
+    long sum0 = 0;
+    for(long i = start; i <= N; i=i+leap){
+        cout<<"i-----"<<i<<endl;
+        sum0 = sum0 + i;
+    }
+    //cout<<"sum0 for:"<<sum0<<endl;
+    return sum0;
+
+}
+
 int main(int argc,char* argv[])
 {
     MPI::Init(argc,argv);
@@ -63,24 +77,47 @@ int main(int argc,char* argv[])
     if (myid == 0) {
 
         // Get the number the user wants
-        int N = atoi(argv[1]);
+        long N = atoi(argv[1]);
 
         // Master sends 'N' to slave
-        MPI::COMM_WORLD.Send(&N, 1, MPI::INT, 1,0);
 
-        // Partial result for node 0
-        int sum0 = 0;
-        for(int i = 1; i <= N/2; i++){
-            sum0 = sum0 + i;
+        for(int i=1;i<numproc;i++)
+        {
+            MPI::COMM_WORLD.Send(&N, 1, MPI_LONG, i,0);
         }
 
+
+        long sum0 = test1(myid,N,numproc);
+
         //Master waits to receive 'sum1' from slave
-        int sum1;
-        MPI::COMM_WORLD.Recv(&sum1, 1, MPI::INT, 1,0);
-        int result = sum0 + sum1;
+        long sum1;
+        long slaveSum=0;
+        long result;
+        for(int i=1;i<numproc;i++)
+        {
+            MPI::COMM_WORLD.Recv(&sum1, 1, MPI_LONG, i,0);
+            slaveSum = slaveSum+sum1;
+            cout<<"sum1--for-slave:"<<sum1<<endl;
+            cout<<"sum1--for-slaveSum:"<<slaveSum<<endl;
+        }
+         cout<<"sum0 final:"<<sum0<<endl;
+        cout<<"slaveSum final:"<<slaveSum<<endl;
+        result = sum0 + slaveSum;
+
 
         std::cout << "The final result is " << result << std::endl;
     }
 
-    return 0;
+    else{
+
+        // Slave waits to receive 'N' from master
+        long N;
+        MPI::COMM_WORLD.Recv(&N, 1, MPI_LONG, 0, 0);
+        long sum1 = 0;
+        sum1 = test1(myid,N,numproc);
+
+        // Slave sends 'sum1' to master
+        MPI::COMM_WORLD.Send(&sum1, 1, MPI_LONG, 0, 0);
+    }
+    MPI::Finalize();
 }
