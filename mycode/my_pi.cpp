@@ -1,4 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
+#include "mpi.h"
+
 using namespace std;
 
 typedef long long ULONG;
@@ -49,7 +53,34 @@ void checkPointInCircle(ULONG startIndex,ULONG loopTimes,int leapConst) {
 
 int main(int argc,char* argv[])
 {
-    checkPointInCircle(0,12,4);
-    cout<<"击中总次数："<<fallInCircleTimes;
+    MPI::Init(argc,argv);
+
+    // What is my ID and how many processes are in this pool?
+    int myid = MPI::COMM_WORLD.Get_rank();
+    int numproc = MPI::COMM_WORLD.Get_size();
+    std::cout << "This is id " << myid << " out of " << numproc << std::endl;
+
+    if (myid == 0) {
+
+        // Get the number the user wants
+        int N = atoi(argv[1]);
+
+        // Master sends 'N' to slave
+        MPI::COMM_WORLD.Send(&N, 1, MPI::INT, 1,0);
+
+        // Partial result for node 0
+        int sum0 = 0;
+        for(int i = 1; i <= N/2; i++){
+            sum0 = sum0 + i;
+        }
+
+        //Master waits to receive 'sum1' from slave
+        int sum1;
+        MPI::COMM_WORLD.Recv(&sum1, 1, MPI::INT, 1,0);
+        int result = sum0 + sum1;
+
+        std::cout << "The final result is " << result << std::endl;
+    }
+
     return 0;
 }
