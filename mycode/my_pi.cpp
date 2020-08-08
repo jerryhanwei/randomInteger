@@ -12,7 +12,7 @@ const ULONG c = 1013904223;
 
 const ULONG m = 4294967296;
 const ULONG sidelen = 65536; // sqrt of m
-ULONG fallInCircleTimes=0;
+
 
 double getNewDistance(double x, double y)
 {
@@ -31,29 +31,34 @@ double rescale(ULONG N, ULONG n, double x1, double x2)
     return x1 + f*(x2 - x1);
 }
 
-void checkPointInCircle(ULONG startIndex,ULONG loopTimes,int leapConst) {
+long getPointCountInCircle(long startIndex,long loopTimes,int leapConst) {
     ULONG i_prev = 12345; // Seed value
-    for (ULONG n = startIndex; n < loopTimes; n = n + leapConst) {
-        cout<<"startIndex:--"<<startIndex<<endl;
-        cout<<"n:--"<<n<<endl;
-        ULONG i_next = modlin(a, i_prev, c, m);
+    long fallInCircleTimes=0;
+    for (long n = startIndex; n < loopTimes; n = n + leapConst) {
+       // cout<<"startIndex:--"<<startIndex<<endl;
+       // cout<<"n:--"<<n<<endl;
+        long i_next = modlin(a, i_prev, c, m);
         i_prev = i_next;
 // Scale the random number to a random 2−d position
-        ULONG ix = i_next % sidelen;
-        ULONG iy = i_next / sidelen;
+        long ix = i_next % sidelen;
+        long iy = i_next / sidelen;
 // Scale current random integer to value from 0−1
         double x = rescale(sidelen, ix, -1, 1);
         double y = rescale(sidelen, iy, -1, 1);
 
         if (getNewDistance(x, y) <= 1) {
-            fallInCircleTimes++;
+           // cout<<"x:"<<x<<",y:"<<y<<endl;
+            fallInCircleTimes = fallInCircleTimes+1;
+           // cout<<" for loop 落入圆内次数："<<fallInCircleTimes<<endl;
         }
     }
+
+    return fallInCircleTimes;
 }
 
 long test1(int start,int N,int leap)
 {
-    cout<<"start:"<<start<<"-----";
+    cout<<"start:"<<start<<"-----"<<endl;
     // Partial result for node 0
     long sum0 = 0;
     for(long i = start; i <= N; i=i+leap){
@@ -73,11 +78,15 @@ int main(int argc,char* argv[])
     int myid = MPI::COMM_WORLD.Get_rank();
     int numproc = MPI::COMM_WORLD.Get_size();
     std::cout << "This is id " << myid << " out of " << numproc << std::endl;
+    double startwtime=0.0,endwtime;
+
+
 
     if (myid == 0) {
 
         // Get the number the user wants
         long N = atoi(argv[1]);
+        startwtime=MPI_Wtime();
 
         // Master sends 'N' to slave
 
@@ -87,7 +96,7 @@ int main(int argc,char* argv[])
         }
 
 
-        long sum0 = test1(myid,N,numproc);
+        long sum0 = getPointCountInCircle(myid,N,numproc);
 
         //Master waits to receive 'sum1' from slave
         long sum1;
@@ -97,15 +106,19 @@ int main(int argc,char* argv[])
         {
             MPI::COMM_WORLD.Recv(&sum1, 1, MPI_LONG, i,0);
             slaveSum = slaveSum+sum1;
-            cout<<"sum1--for-slave:"<<sum1<<endl;
-            cout<<"sum1--for-slaveSum:"<<slaveSum<<endl;
+        //    cout<<"sum1--for-slave:"<<sum1<<endl;
+        //    cout<<"sum1--for-slaveSum:"<<slaveSum<<endl;
         }
-         cout<<"sum0 final:"<<sum0<<endl;
-        cout<<"slaveSum final:"<<slaveSum<<endl;
+        // cout<<"sum0 主线程击中次数:"<<sum0<<endl;
+        //cout<<"slaveSum final:"<<slaveSum<<endl;
         result = sum0 + slaveSum;
 
-
-        std::cout << "The final result is " << result << std::endl;
+        endwtime=MPI_Wtime();
+        cout<<"elapse time: "<<endwtime-startwtime;
+        double PI = ((double)result/N)*4;
+        std::cout << " 投掷次数：" << N << std::endl;
+        std::cout << " 击中次数：" << result << std::endl;
+        std::cout << " PI ：" << PI << std::endl;
     }
 
     else{
@@ -114,7 +127,7 @@ int main(int argc,char* argv[])
         long N;
         MPI::COMM_WORLD.Recv(&N, 1, MPI_LONG, 0, 0);
         long sum1 = 0;
-        sum1 = test1(myid,N,numproc);
+        sum1 = getPointCountInCircle(myid,N,numproc);
 
         // Slave sends 'sum1' to master
         MPI::COMM_WORLD.Send(&sum1, 1, MPI_LONG, 0, 0);
