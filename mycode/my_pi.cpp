@@ -78,47 +78,62 @@ int main(int argc,char* argv[])
     int myid = MPI::COMM_WORLD.Get_rank();
     int numproc = MPI::COMM_WORLD.Get_size();
     std::cout << "This is id " << myid << " out of " << numproc << std::endl;
-    double startwtime=0.0,endwtime;
-
-
+    double masterStartTime=0.0;
+    double masterEndTime=0.0;
 
     if (myid == 0) {
 
-        // Get the number the user wants
+        // Get the loop times
         long N = atoi(argv[1]);
-        startwtime=MPI_Wtime();
-
-        // Master sends 'N' to slave
-
-        for(int i=1;i<numproc;i++)
-        {
-            MPI::COMM_WORLD.Send(&N, 1, MPI_LONG, i,0);
-        }
-
-
+        masterStartTime=MPI_Wtime();
+        // main get counts of falling in circle
         long sum0 = getPointCountInCircle(myid,N,numproc);
 
-        //Master waits to receive 'sum1' from slave
         long sum1;
         long slaveSum=0;
         long result;
-        for(int i=1;i<numproc;i++)
-        {
-            MPI::COMM_WORLD.Recv(&sum1, 1, MPI_LONG, i,0);
-            slaveSum = slaveSum+sum1;
-        //    cout<<"sum1--for-slave:"<<sum1<<endl;
-        //    cout<<"sum1--for-slaveSum:"<<slaveSum<<endl;
-        }
-        // cout<<"sum0 主线程击中次数:"<<sum0<<endl;
-        //cout<<"slaveSum final:"<<slaveSum<<endl;
-        result = sum0 + slaveSum;
+        double slaveSendingTimeStart = 0.0;
+        double slaveSendingTimeEnd = 0.0;
+        // if the number of processes > 1
+         if(numproc>1){
+             slaveSendingTimeStart = MPI_Wtime();
+             // main send to slaves
+             for(int i=1;i<numproc;i++)
+             {
+                 MPI::COMM_WORLD.Send(&N, 1, MPI_LONG, i,0);
+             }
+             //Master waits to receive 'sum1' from slave
 
-        endwtime=MPI_Wtime();
-        cout<<"elapse time: "<<endwtime-startwtime;
+             for(int i=1;i<numproc;i++)
+             {
+                 MPI::COMM_WORLD.Recv(&sum1, 1, MPI_LONG, i,0);
+                 slaveSum = slaveSum+sum1;
+                 //    cout<<"sum1--for-slave:"<<sum1<<endl;
+                 //    cout<<"sum1--for-slaveSum:"<<slaveSum<<endl;
+             }
+             result = sum0 + slaveSum;
+             slaveSendingTimeEnd = MPI_Wtime();
+             // cout<<"sum0 主线程击中次数:"<<sum0<<endl;
+             //cout<<"slaveSum final:"<<slaveSum<<endl;
+         }else{
+             result = sum0;
+         }
+
         double PI = ((double)result/N)*4;
-        std::cout << " 投掷次数：" << N << std::endl;
-        std::cout << " 击中次数：" << result << std::endl;
+
+        std::cout << " throwing times：" << N << std::endl;
+        std::cout << " targeted times：" << result << std::endl;
         std::cout << " PI ：" << PI << std::endl;
+
+        masterEndTime=MPI_Wtime();
+        double wholeTime = masterEndTime-masterStartTime;
+        double communicationTime = slaveSendingTimeEnd-slaveSendingTimeStart;
+        int percentOfCommunication = (int)((communicationTime/wholeTime)*100);
+
+        cout<<"the whole process elapse time: "<<wholeTime<<endl;
+        cout<<"parallel program communication time: "<<communicationTime<<endl;
+        cout<<"master took "<<percentOfCommunication<<"% of wholeTime to call slaves to do some help"<<endl;
+
     }
 
     else{
@@ -127,6 +142,7 @@ int main(int argc,char* argv[])
         long N;
         MPI::COMM_WORLD.Recv(&N, 1, MPI_LONG, 0, 0);
         long sum1 = 0;
+        // slave count number of falling in circle
         sum1 = getPointCountInCircle(myid,N,numproc);
 
         // Slave sends 'sum1' to master
